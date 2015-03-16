@@ -5,8 +5,7 @@
 # dbhealth                                                                     #
 #                                                                              #
 # PT-br:                                                                       #
-# Checa consistencia de tabelas para MySQL                                     #
-# antigos.                                                                     #
+# Checa consistencia de tabelas para MySQL.                                    #
 #                                                                              #
 # ----------------------------                                                 #
 #                                                                              #
@@ -75,4 +74,115 @@
 #------------------------------------------------------------------------------#
 
 #[ Variables ]-----------------------------------------------------------------#
-#warning  : Table is marked as crashed
+
+CRASHARRAY=""
+SED=$(which sed)
+GREP=$(which grep)
+DATE=$(which date)
+HEAD=$(which head)
+BASE64=$(which base64)
+SCRIPTNAME=$(basename $0)
+SHA256SUM=$(which sha256sum)
+MYSQLCHECKBIN=$(which mysqlcheck)
+LOCKFILE=$TMPFILEPATH/${SCRIPTNAME}.lock
+TMPFILENAME=$($DATE +%s | $SHA256SUM | $BASE64 | $HEAD -c 5)
+
+# script conf file. Set here the full path like "/etc/dbhealth/dbhealth.conf"
+SCRIPTCONFFILE="dbhealth.conf"
+
+#[ Functions ]-----------------------------------------------------------------#
+
+trapfunction(){
+
+	# Function called by 'trap' command. Only removes lock
+	# file if the process PID was the same in the file.
+
+	PIDOFMYSELF=$$
+	PIDINLOCKFILE=$(cat $LOCKFILE)
+	if [ "$PIDOFMYSELF" == "$PIDINLOCKFILE" ] ; then
+		rm $LOCKFILE
+	else
+		echo
+		echo "PID: $PIDINLOCKFILE"
+		echo
+	fi
+        
+}
+
+trap trapfunction 0 1 2 3 9 15
+
+exiterrorfunc(){
+
+	# Generic output function, show the message given,
+	# and then exits with the given code.
+
+	# Parse message and exit code
+	EXITCODE=$(echo $@ | awk '{print $NF}')
+	EXITMESSAGE=$(echo $@ | awk '{ $NF = ""; print $0}')
+	echo "[ $($DATE +%m/%d/%Y\ %H:%M:%S) ] - $EXITMESSAGE" >> $DBHEALTHLOG
+	exit $EXITCODE
+        
+}
+
+
+databaseCheck(){
+
+	echo "--------------------------------------" >> $DBHEALTHLOG
+	echo "[ $($DATE +%m/%d/%Y\ %H:%M:%S) ] - Starting Health Check execution" >> $DBHEALTHLOG
+	for i in $DBARRAY; do
+		$MYSQLCHECKBIN -c ${i} -u $DBUSER -pDBPASSWORD >> $TMPFILEPATH/$TMPFILENAME
+		wait
+		echo "[ $($DATE +%m/%d/%Y\ %H:%M:%S) ] - Looking for inconsistent tables in ${i} Database" >> $DBHEALTHLOG
+		CRASHEDDB=$($GREP -B1 'warning  : Table is marked as crashed' | $HEAD -1 | $AWK '{print $1}')
+		if [[ $CRASHEDDB = "" ]] ; then
+			echo "[ $($DATE +%m/%d/%Y\ %H:%M:%S) ] - All Tables in ${i} looks OK" >> $DBHEALTHLOG
+		else
+			echo "[ $($DATE +%m/%d/%Y\ %H:%M:%S) ] - $CRASHEDDB is crashed, enqueuing to repair..." >> $DBHEALTHLOG
+			CRASHARRAY="$CRASHEDDB $CRASHARRAY"
+		fi
+	done
+
+	if [[ $CRASHARRAY = "" ]] ; then
+		exiterrorfunc "All given databases are working fine 0"
+	else
+		echo "[ $($DATE +%m/%d/%Y\ %H:%M:%S) ] - Initiating repairs" >> $DBHEALTHLOG
+		databaseRepair $CRASHARRAY
+	fi
+
+}
+
+databaseRepair(){
+
+	IFS='
+'
+	for j in $CRASHARRAY; do
+		DBTABLE=$(echo ${j} | $SED 's/\./ /')
+		echo "[ $($DATE +%m/%d/%Y\ %H:%M:%S) ] - Working on $DBTABLE" >> $DBHEALTHLOG
+		$MYSQLCHECKBIN -r $DBTABLE -u $DBUSER -pDBPASSWORD
+		if [ $? -ne 0 ] ; then
+			echo "[ $($DATE +%m/%d/%Y\ %H:%M:%S) ] - Something went wrong, you should try fix the table ${j} manually" >> $DBHEALTHLOG
+		fi
+	done
+
+	exiterrorfunc "Execution ended, take a time to see the follow tables: $CRASHARRAY 0"
+
+}
+
+#[ Load conf file ]------------------------------------------------------------#
+
+if [ -e $SCRIPTCONFFILE ] ; then
+        source $SCRIPTCONFFILE
+else
+        exiterrorfunc "ERROR: $SCRIPTCONFFILE file not found 1"
+fi
+
+#[ tests, tests, tests ]-------------------------------------------------------#
+
+# Validate if there is a lock file
+if [ -e $LOCKFILE ]; then
+        exiterrorfunc "There is another script running 1"
+else
+        echo "$$" > $LOCKFILE
+fi
+
+databaseCheck
