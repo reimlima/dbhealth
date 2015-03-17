@@ -133,7 +133,7 @@ databaseCheck(){
 	echo "--------------------------------------" >> $DBHEALTHLOG
 	echo "[ $($DATE +%m/%d/%Y\ %H:%M:%S) ] - Starting Health Check execution" >> $DBHEALTHLOG
 	for i in $DBARRAY; do
-		$MYSQLCHECKBIN -c ${i} -u $DBUSER -pDBPASSWORD >> $TMPFILEPATH/$TMPFILENAME
+		$MYSQLCHECKBIN -c ${i} -u $DBUSER -p$DBPASSWORD >> $TMPFILEPATH/$TMPFILENAME
 		wait
 		echo "[ $($DATE +%m/%d/%Y\ %H:%M:%S) ] - Looking for inconsistent tables in ${i} Database" >> $DBHEALTHLOG
 		CRASHEDDB=$($GREP -B1 'Table is marked as crashed' $TMPFILEPATH/$TMPFILENAME | $HEAD -1 | $AWK '{print $1}')
