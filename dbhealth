@@ -5,12 +5,12 @@
 # dbhealth                                                                     #
 #                                                                              #
 # PT-br:                                                                       #
-# Checa consistencia de tabelas para MySQL.                                    #
+# Checa consistencia de tabelas do MySQL e tenta corrigir eventuais erros.     #
 #                                                                              #
 # ----------------------------                                                 #
 #                                                                              #
 # EN:                                                                          #
-# Check table consistence for MySQL.                                           #
+# Check table consistence for MySQL and try to fix  existing errors.           #
 #                                                                              #
 # reimlima@gmail.com                                                           #
 # $Id: dbhealth,v 1 2015/03/13 reimlima Exp reimlima $                         #
