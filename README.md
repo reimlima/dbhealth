@@ -28,21 +28,21 @@ DBARRAY, TMPFILEPATH, DBHEALTHLOG, then run the script.
 
 Legend:
 
-        DBUSER:		MySQL Access Login
+	DBUSER:		MySQL Access Login
         
-        DBPASSWORD:     MySQL Access Password
+	DBPASSWORD:     MySQL Access Password
         
-        DBARRAY:	Databases to Check
+	DBARRAY:	Databases to Check
 			fill it in format like => "db1 db2 dbN"
                                         
-        TMPFILEPATH:	Internal temporary file used by script
+	TMPFILEPATH:	Internal temporary file used by script
         
-        DBDUMPLOG:	Log File
+	DBDUMPLOG:	Log File
 
 Example:
 
-        DBUSER="root"
-        DBPASSWORD="pass1234"
-        DBARRAY="zabbix nagios cacti"
+	DBUSER="root"
+	DBPASSWORD="pass1234"
+	DBARRAY="zabbix nagios cacti"
 	TMPFILEPATH="/tmp"
-        DBHEALTHLOG="dbhealth.log"
+	DBHEALTHLOG="dbhealth.log"
